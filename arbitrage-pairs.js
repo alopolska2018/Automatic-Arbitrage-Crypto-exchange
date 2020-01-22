@@ -1,11 +1,19 @@
 "use strict";
 var config = require('./config/config');
 var symbol_excluded = require('./config/symbol_excluded');
+const fs = require("fs")
+var currentdate = new Date();
+var datetime = "Data uruchomienia: " + currentdate.getDate() + "/"
+                + (currentdate.getMonth()+1)  + "/"
+                + currentdate.getFullYear() + " @ "
+                + currentdate.getHours() + ":"
+                + currentdate.getMinutes() + ":"
+                + currentdate.getSeconds();
+fs.writeFile("wyniki.txt",datetime +"\n",{"flag":"a"}, (err) => {
+if (err) throw err;});
 console.log("Symbol excluded (wallet update, deposit maintenance, bug, etc): ")
 console.log(symbol_excluded)
-
 var request = require("request")
-
 const ccxt = require('ccxt')
 const asTable = require('as-table')
 const log = require('ololog').configure({ locate: false })
@@ -176,7 +184,7 @@ function compareAll(oB, ids, symbol, exchanges) {
                   else {
                     oB.spreads[c] = oB.orderbook[i].bids[0][0] / oB.orderbook[j].asks[0][0]
                   }
-                  //console.log(ids[i]+" et REVENTE sur "+ids[j]+"     => Gain = "+(oB.spreads[c]-1)*100 +" % ")
+                  console.log(ids[i]+" resell on "+ids[j]+"     => Gain = "+(oB.spreads[c]-1)*100 +" % ")
                   if (oB.spreads[c] > spreadMax) {
                     spreadMax = oB.spreads[c];
                     imax = i;
@@ -206,6 +214,9 @@ function compareAll(oB, ids, symbol, exchanges) {
         // markets['ETH/BTC'].taker
         // }
         console.log(symbol + " : Buy of " + volume + " on " + ids[jmax] + " at price " + oB.orderbook[jmax].asks[0][0] + " fees : " + takerJ + " and sell on " + ids[imax] + " fees : " + takerJ + " at price " + oB.orderbook[imax].bids[0][0] + "   => Win of = " + Math.round((spreadMax - 1 - takerI - takerJ) * 100 * 100) / 100 + " % ")
+        var winner = symbol + " : Buy of " + volume + " on " + ids[jmax] + " at price " + oB.orderbook[jmax].asks[0][0] + " fees : " + takerJ + " and sell on " + ids[imax] + " fees : " + takerJ + " at price " + oB.orderbook[imax].bids[0][0] + "   => Win of = " + Math.round((spreadMax - 1 - takerI - takerJ) * 100 * 100) / 100 + " % " +"\n"
+        fs.appendFile("wyniki.txt",winner, (err) => {
+        if (err) throw err;});
         if (ids[jmax] == 'exmo' || ids[imax] == 'exmo') {
           var string_notification = symbol + " : Buy of  " + volume + " on " + ids[jmax] + " at price " + oB.orderbook[jmax].asks[0][0] + " fees : " + takerJ + " and sell on " + ids[imax] + " fees : " + takerJ + " at price " + oB.orderbook[imax].bids[0][0] + "   => Win of = " + Math.round((spreadMax - 1 - takerI - takerJ) * 100 * 100) / 100 + " % "
           request.post('https://api.pushover.net/1/messages.json', { form: { token: config.apiKeyPushoverToken, user: config.apiKeyPushoverUser, message: string_notification } })
